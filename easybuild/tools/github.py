@@ -1922,11 +1922,13 @@ def fetch_github_token(user):
         msg = "Failed to obtain GitHub token from keyring, "
         msg += "required Python module https://pypi.python.org/pypi/keyring is not available."
     else:
+        kr = kcf.CryptFileKeyring()
         try:
-            kr = kcf.CryptFileKeyring()
-            kr.keyring_key = os.environ['KCF_MP']
+            key_path = os.path.join(os.path.expanduser("~"), '.local/easybuild/.kcfmp')
+            with open(key_path, 'r') as key_file:
+                kr.keyring_key = key_file.readline().strip()
         except Exception as err:
-            _log.warning("Keyring master password not found: %s", err)
+            _log.warning("Keyring master password not found in %s: %s", key_path, err)
         else:
             keyring.set_keyring(kr)
 
