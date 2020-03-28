@@ -63,6 +63,7 @@ _log = fancylogger.getLogger('github', fname=False)
 
 try:
     import keyring
+    import keyrings.cryptfile.cryptfile as kcf
     HAVE_KEYRING = True
 except ImportError as err:
     _log.warning("Failed to import 'keyring' Python module: %s" % err)
@@ -1921,6 +1922,14 @@ def fetch_github_token(user):
         msg = "Failed to obtain GitHub token from keyring, "
         msg += "required Python module https://pypi.python.org/pypi/keyring is not available."
     else:
+        try:
+            kr = kcf.CryptFileKeyring()
+            kr.keyring_key = os.environ['KCF_MP']
+        except Exception as err:
+            _log.warning("Keyring master password not found: %s", err)
+        else:
+            keyring.set_keyring(kr)
+
         try:
             token = keyring.get_password(KEYRING_GITHUB_TOKEN, user)
         except Exception as err:
