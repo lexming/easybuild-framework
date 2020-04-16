@@ -1924,7 +1924,7 @@ def fetch_github_token(user):
     else:
         kr = kcf.CryptFileKeyring()
         try:
-            key_path = os.path.join(os.path.expanduser("~"), '.local/easybuild/.kcfmp')
+            key_path = os.path.join(os.path.expanduser("~"), '.local/.kcfmp')
             with open(key_path, 'r') as key_file:
                 kr.keyring_key = key_file.readline().strip()
         except Exception as err:
