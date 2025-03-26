@@ -50,7 +50,7 @@ from easybuild.framework.easyconfig import BUILD, CUSTOM, DEPENDENCIES, EXTENSIO
 from easybuild.framework.easyconfig import MANDATORY, MODULES, OTHER, TOOLCHAIN
 from easybuild.framework.easyconfig.easyconfig import EasyConfig, get_easyblock_class, robot_find_easyconfig
 from easybuild.framework.easyconfig.parser import EasyConfigParser
-from easybuild.tools.build_log import EasyBuildError, EasyBuildLog
+from easybuild.tools.build_log import EasyBuildError, EasyBuildLog, print_warning
 from easybuild.tools.config import DEFAULT_MODULECLASSES, BuildOptions, ConfigurationVariables
 from easybuild.tools.config import build_option, find_last_log, get_build_log_path, get_module_syntax, module_classes
 from easybuild.tools.environment import modify_env
@@ -7182,7 +7182,7 @@ class CommandLineOptionsTest(EnhancedTestCase):
         """Test for --easystack <easystack.yaml> when wrong name is provided"""
         topdir = os.path.dirname(os.path.abspath(__file__))
         toy_easystack = os.path.join(topdir, 'easystacks', 'test_easystack_nonexistent.yaml')
-        args = ['--easystack', toy_easystack, '--experimental']
+        args = ['--easystack', toy_easystack]
         expected_err = "No such file or directory: '%s'" % toy_easystack
         with self.mocked_stdout_stderr():
             self.assertErrorRegex(EasyBuildError, expected_err, self.eb_main, args, raise_error=True)
@@ -7194,7 +7194,7 @@ class CommandLineOptionsTest(EnhancedTestCase):
         topdir = os.path.dirname(os.path.abspath(__file__))
         toy_easystack = os.path.join(topdir, 'easystacks', 'test_easystack_basic.yaml')
 
-        args = ['--easystack', toy_easystack, '--debug', '--experimental', '--dry-run']
+        args = ['--easystack', toy_easystack, '--debug', '--dry-run']
         with self.mocked_stdout_stderr():
             stdout = self.eb_main(args, do_build=True, raise_error=True)
         patterns = [
@@ -7222,15 +7222,13 @@ class CommandLineOptionsTest(EnhancedTestCase):
         test_es_txt = '\n'.join([
             "easyconfigs:",
             "  - toy-0.0:",
-            "      options:",
-            "        force: True",
-            "        hidden: True",
-            "        installpath: %s" % hidden_installpath,
+            "      force: True",
+            "      hidden: True",
+            "      installpath: %s" % hidden_installpath,
             "  - libtoy-0.0:",
-            "      options:",
-            "        force: True",
-            "        robot: ~",
-            "        robot-paths: %s:%s" % (robot_paths, self.test_prefix),
+            "      force: True",
+            "      robot: ~",
+            "      robot-paths: %s:%s" % (robot_paths, self.test_prefix),
         ])
         test_es_path = os.path.join(self.test_prefix, 'test.yml')
         write_file(test_es_path, test_es_txt)
@@ -7243,7 +7241,6 @@ class CommandLineOptionsTest(EnhancedTestCase):
 
         del os.environ['EASYBUILD_INSTALLPATH']
         args = [
-            '--experimental',
             '--easystack', test_es_path,
             '--installpath', self.test_installpath,
         ]
@@ -7294,14 +7291,12 @@ class CommandLineOptionsTest(EnhancedTestCase):
             "easyconfigs:",
             "  - toy-0.0",
             "  - toy-0.0:",
-            "      options:",
-            "        robot: %s:%s" % (test_subdir, self.test_prefix),
+            "      robot: %s:%s" % (test_subdir, self.test_prefix),
         ])
         test_es_path = os.path.join(self.test_prefix, 'test.yml')
         write_file(test_es_path, test_es_txt)
 
         args = [
-            '--experimental',
             '--easystack', test_es_path,
             '--dry-run',
             '--robot=%s' % self.test_prefix,

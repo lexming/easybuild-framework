@@ -34,9 +34,8 @@ import sys
 import tempfile
 from unittest import TextTestRunner
 
-import easybuild.tools.build_log
-from easybuild.framework.easystack import check_value, parse_easystack
-from easybuild.tools.build_log import EasyBuildError
+from easybuild.framework.easystack import EASYSTACK_EC_KEY, EasyStack, check_value
+from easybuild.tools.build_log import EasyBuildError, print_warning
 from easybuild.tools.filetools import write_file
 from test.framework.utilities import EnhancedTestCase, TestLoaderFiltered
 
@@ -49,13 +48,9 @@ class EasyStackTest(EnhancedTestCase):
     def setUp(self):
         """Set up test."""
         super(EasyStackTest, self).setUp()
-        self.orig_experimental = easybuild.tools.build_log.EXPERIMENTAL
-        # easystack files are an experimental feature
-        easybuild.tools.build_log.EXPERIMENTAL = True
 
     def tearDown(self):
         """Clean up after test."""
-        easybuild.tools.build_log.EXPERIMENTAL = self.orig_experimental
         super(EasyStackTest, self).tearDown()
 
     def test_easystack_basic(self):
@@ -70,7 +65,7 @@ class EasyStackTest(EnhancedTestCase):
         for fn in test_easystacks:
             test_easystack = os.path.join(topdir, 'easystacks', fn)
 
-            easystack = parse_easystack(test_easystack)
+            easystack = EasyStack(test_easystack)
             expected = [
                 'binutils-2.25-GCCcore-4.9.3.eb',
                 'binutils-2.26-GCCcore-4.9.3.eb',
@@ -78,7 +73,7 @@ class EasyStackTest(EnhancedTestCase):
                 'toy-0.0-gompi-2018a-test.eb',
             ]
             self.assertEqual(sorted([x[0] for x in easystack.ec_opt_tuples]), sorted(expected))
-            self.assertTrue(all(x[1] is None for x in easystack.ec_opt_tuples))
+            self.assertTrue(all(not x[1] for x in easystack.ec_opt_tuples))
 
     def test_easystack_easyconfigs_dict(self):
         """Test for easystack file where easyconfigs item is parsed as a dict, because easyconfig names are not
@@ -86,8 +81,8 @@ class EasyStackTest(EnhancedTestCase):
         topdir = os.path.dirname(os.path.abspath(__file__))
         test_easystack = os.path.join(topdir, 'easystacks', 'test_easystack_easyconfigs_dict.yaml')
 
-        error_pattern = r"Found dict value for 'easyconfigs' in .* should be list.\nMake sure you use '-' to create .*"
-        self.assertErrorRegex(EasyBuildError, error_pattern, parse_easystack, test_easystack)
+        error_pattern = rf"Key '{EASYSTACK_EC_KEY}' in easystack.*should be a list, found.*dict.*\nMake sure you use.*"
+        self.assertErrorRegex(EasyBuildError, error_pattern, EasyStack, test_easystack)
 
     def test_easystack_easyconfigs_str(self):
         """Test for easystack file where easyconfigs item is parsed as a dict, because easyconfig names are not
@@ -95,39 +90,40 @@ class EasyStackTest(EnhancedTestCase):
         topdir = os.path.dirname(os.path.abspath(__file__))
         test_easystack = os.path.join(topdir, 'easystacks', 'test_easystack_easyconfigs_str.yaml')
 
-        error_pattern = r"Found str value for 'easyconfigs' in .* should be list.\nMake sure you use '-' to create .*"
-        self.assertErrorRegex(EasyBuildError, error_pattern, parse_easystack, test_easystack)
+        error_pattern = rf"Key '{EASYSTACK_EC_KEY}' in easystack.*should be a list, found.*str.*\nMake sure you use.*"
+        self.assertErrorRegex(EasyBuildError, error_pattern, EasyStack, test_easystack)
 
     def test_easystack_easyconfig_opts(self):
         """Test an easystack file using the 'easyconfigs' key, with additonal options for some easyconfigs"""
         topdir = os.path.dirname(os.path.abspath(__file__))
         test_easystack = os.path.join(topdir, 'easystacks', 'test_easystack_easyconfigs_opts.yaml')
 
-        easystack = parse_easystack(test_easystack)
+        easystack = EasyStack(test_easystack)
         expected_tuples = [
             ('binutils-2.25-GCCcore-4.9.3.eb', {'debug': True, 'from-pr': 12345}),
-            ('binutils-2.26-GCCcore-4.9.3.eb', None),
+            ('binutils-2.26-GCCcore-4.9.3.eb', {}),
             ('foss-2018a.eb', {'enforce-checksums': True, 'robot': True}),
-            ('toy-0.0-gompi-2018a-test.eb', None),
+            ('toy-0.0-gompi-2018a-test.eb', {}),
         ]
         self.assertEqual(easystack.ec_opt_tuples, expected_tuples)
 
     def test_easystack_invalid_key(self):
-        """Test easystack files with invalid key at the same level as the 'options' key"""
+        """Test easystack files with invalid key at the same level as the eastconfig options keys"""
         topdir = os.path.dirname(os.path.abspath(__file__))
         test_easystack = os.path.join(topdir, 'easystacks', 'test_easystack_invalid_key.yaml')
 
-        error_pattern = r"Found one or more invalid keys for .* \(only 'options' supported\).*"
-        self.assertErrorRegex(EasyBuildError, error_pattern, parse_easystack, test_easystack)
+        error_pattern = "Found one or more invalid options for easyconfig .* in EasyStack. "
+        error_pattern += "Options cannot be a dictionary."
+        self.assertErrorRegex(EasyBuildError, error_pattern, EasyStack, test_easystack)
 
     def test_easystack_invalid_key2(self):
         """Test easystack files with invalid key at the same level as the key that names the easyconfig"""
         topdir = os.path.dirname(os.path.abspath(__file__))
         test_easystack = os.path.join(topdir, 'easystacks', 'test_easystack_invalid_key2.yaml')
 
-        error_pattern = r"expected a dictionary with one key \(the EasyConfig name\), "
-        error_pattern += r"instead found keys: .*, invalid_key"
-        self.assertErrorRegex(EasyBuildError, error_pattern, parse_easystack, test_easystack)
+        error_pattern = "EasyConfig definition in EasyStack can only provide one file name, "
+        error_pattern += "found .*invalid_key.*"
+        self.assertErrorRegex(EasyBuildError, error_pattern, EasyStack, test_easystack)
 
     def test_easystack_restore_env_after_each_build(self):
         """Test that the build environment and tmpdir is reset for each easystack item"""
@@ -151,7 +147,6 @@ class EasyStackTest(EnhancedTestCase):
         write_file(test_es_path, test_es_txt)
 
         args = [
-            '--experimental',
             '--easystack',
             test_es_path
         ]
@@ -181,15 +176,15 @@ class EasyStackTest(EnhancedTestCase):
         topdir = os.path.dirname(os.path.abspath(__file__))
         test_easystack = os.path.join(topdir, 'easystacks', 'test_missing_easyconfigs_key.yaml')
 
-        error_pattern = r"Top-level key 'easyconfigs' missing in easystack file %s" % test_easystack
-        self.assertErrorRegex(EasyBuildError, error_pattern, parse_easystack, test_easystack)
+        error_pattern = f"Top-level key '{EASYSTACK_EC_KEY}' missing in easystack file: {test_easystack}"
+        self.assertErrorRegex(EasyBuildError, error_pattern, EasyStack, test_easystack)
 
     def test_parse_fail(self):
         """Test for clean error when easystack file fails to parse."""
         test_yml = os.path.join(self.test_prefix, 'test.yml')
         write_file(test_yml, 'easyconfigs: %s')
-        error_pattern = "Failed to parse .*/test.yml: while scanning for the next token"
-        self.assertErrorRegex(EasyBuildError, error_pattern, parse_easystack, test_yml)
+        error_pattern = "Failed to parse easystack '.*/test.yml': while scanning for the next token"
+        self.assertErrorRegex(EasyBuildError, error_pattern, EasyStack, test_yml)
 
     def test_check_value(self):
         """Test check_value function."""

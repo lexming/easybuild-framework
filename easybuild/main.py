@@ -53,7 +53,7 @@ from easybuild.tools.build_log import EasyBuildError, print_error, print_msg, pr
 from easybuild.framework.easyblock import build_and_install_one, inject_checksums, inject_checksums_to_json
 from easybuild.framework.easyconfig import EASYCONFIGS_PKG_SUBDIR
 from easybuild.framework.easyconfig import easyconfig
-from easybuild.framework.easystack import parse_easystack
+from easybuild.framework.easystack import EasyStack
 from easybuild.framework.easyconfig.easyconfig import clean_up_easyconfigs
 from easybuild.framework.easyconfig.easyconfig import fix_deprecated_easyconfigs, verify_easyconfig_filename
 from easybuild.framework.easyconfig.style import cmdline_easyconfigs_style_check
@@ -235,12 +235,13 @@ def process_easystack(easystack_path, args, logfile, testing, init_session_state
     :param init_session_state: initial session state, to use in test reports
     :param do_build: whether or not to actually perform the build
     """
-    easystack = parse_easystack(easystack_path)
+    easystack = EasyStack(easystack_path)
 
     # keep copy of original environment, so we can restore it for every easystack entry
     init_env = copy.deepcopy(os.environ)
 
     global _log
+    _log.info(f"Building from easystack: '{easystack_path}'")
 
     # TODO: insert fast loop that validates if all command line options are valid. If there are errors in options,
     # we want to know early on, and this loop potentially builds a lot of packages and could take very long
