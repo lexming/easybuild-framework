@@ -36,7 +36,7 @@ import contextlib
 import pprint
 
 from easybuild.base import fancylogger
-from easybuild.tools.build_log import EasyBuildError
+from easybuild.tools.build_log import EasyBuildError, print_warning
 from easybuild.tools.filetools import read_file
 from easybuild.tools.utilities import only_if_module_is_available
 
@@ -47,6 +47,7 @@ EASYSTACK_DOC_URL = 'https://docs.easybuild.io/en/latest/Easystack-files.html'
 
 EASYSTACK_EC_KEY = 'easyconfigs'
 EASYSTACK_EB_VER_KEY = 'easybuild_version'
+EASYSTACK_BUILD_OPT_KEY = 'build_options'
 
 _log = fancylogger.getLogger('easystack', fname=False)
 
@@ -82,6 +83,7 @@ class EasyStack:
 
         self.easyconfigs = []
         self.easybuild_version = None
+        self.build_options = None
 
         self.parse(easystack_path)
 
@@ -95,7 +97,12 @@ class EasyStack:
         List of easyconfigs with their specific options and general build options
         """
 
-        return self.easyconfigs
+        if not self.build_options:
+            return self.easyconfigs
+
+        # combine general build options with easyconfig options
+        # easyconfig specific optioncs have precedence over general ones
+        return [(ec_name, self.build_options | ec_opts) for ec_name, ec_opts in self.easyconfigs]
 
     @only_if_module_is_available('yaml', pkgname='PyYAML')
     def parse(self, easystack_path):
@@ -132,6 +139,7 @@ class EasyStack:
 
         # parse other options in easystack
         self.easybuild_version = easystack.get(EASYSTACK_EB_VER_KEY, None)
+        self.build_options = easystack.get(EASYSTACK_BUILD_OPT_KEY, None)
 
         easyconfigs_log_print = '\n'.join([ec[0] for ec in self.easyconfigs])
         self.log.debug(f"Parsed easystack:\n{easyconfigs_log_print}")

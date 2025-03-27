@@ -107,6 +107,21 @@ class EasyStackTest(EnhancedTestCase):
         ]
         self.assertEqual(easystack.ec_opt_tuples, expected_tuples)
 
+    def test_easystack_general_build_opts(self):
+        """Test an easystack file using general build options"""
+        topdir = os.path.dirname(os.path.abspath(__file__))
+        test_easystack = os.path.join(topdir, 'easystacks', 'test_easystack_general_opts.yaml')
+
+        easystack = EasyStack(test_easystack)
+        expected_tuples = [
+            ('binutils-2.25-GCCcore-4.9.3.eb', {'rebuild': True, 'robot': False, 'debug': True, 'from-pr': 12345}),
+            ('binutils-2.26-GCCcore-4.9.3.eb', {'rebuild': True, 'robot': False}),
+            # easyconfig specific options have precedence over general options
+            ('foss-2018a.eb', {'rebuild': True, 'robot': True, 'enforce-checksums': True}),
+            ('toy-0.0-gompi-2018a-test.eb', {'rebuild': True, 'robot': False}),
+        ]
+        self.assertEqual(easystack.ec_opt_tuples, expected_tuples)
+
     def test_easystack_invalid_key(self):
         """Test easystack files with invalid key at the same level as the eastconfig options keys"""
         topdir = os.path.dirname(os.path.abspath(__file__))

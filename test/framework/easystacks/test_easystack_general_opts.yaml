@@ -1,0 +1,12 @@
+build_options:
+    rebuild: True
+    robot: False
+easyconfigs:
+    - binutils-2.25-GCCcore-4.9.3:
+        'debug': True
+        'from-pr': 12345
+    - binutils-2.26-GCCcore-4.9.3
+    - foss-2018a:
+        enforce-checksums: True
+        robot: True
+    - toy-0.0-gompi-2018a-test
